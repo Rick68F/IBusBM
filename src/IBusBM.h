@@ -18,6 +18,11 @@
 #include "HardwareSerial.h"
 #endif
 
+#if defined(ARDUINO_ARCH_RP2040)
+#include "HardwareSerial.h"
+#include "pico/time.h"
+#endif
+
 // if you have an opentx transciever you can add additional sensor types here.
 // see https://github.com/cleanflight/cleanflight/blob/7cd417959b3cb605aa574fc8c0f16759943527ef/src/main/telemetry/ibus_shared.h
 // below the values supported by the Turnigy FS-MT6 transceiver
