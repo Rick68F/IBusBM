@@ -36,6 +36,11 @@ IBusBM* IBusBMfirst = NULL;
 SIGNAL(TIMER0_COMPA_vect) {
   if (IBusBMfirst) IBusBMfirst->loop();  // gets new servo values if available and process any sensor data
 }
+#elif defined(ARDUINO_ARCH_RP2040)
+bool onTimer(repeating_timer_t *) {
+  if (IBusBMfirst) IBusBMfirst->loop();  // gets new servo values if available and process any sensor data
+  return true;
+}
 #else
 void  onTimer() {
   if (IBusBMfirst) IBusBMfirst->loop();  // gets new servo values if available and process any sensor data
@@ -125,6 +130,18 @@ void IBusBM::begin(HardwareSerial &serial, int8_t timerid, int8_t rxPin, int8_t 
         stimer_t->setOverflow(1000, HERTZ_FORMAT); // 1000 Hz
         stimer_t->attachInterrupt(onTimer);
         stimer_t->resume();
+      #elif defined(ARDUINO_ARCH_STM32)
+         #if defined(TIM1)
+	         TIM_TypeDef *Instance = TIM1;
+	       #else
+	          TIM_TypeDef *Instance = TIM2;
+         #endif
+    	  // Instantiate HardwareTimer object. Thanks to 'new' instanciation, HardwareTimer is not destructed when setup() function is finished.
+    	  HardwareTimer *MyTim = new HardwareTimer(Instance);
+    	  // MyTim->setOverflow(10, HERTZ_FORMAT);  // 10 Hz
+    	  MyTim->setOverflow(1000, MICROSEC_FORMAT);  // 10 Hz
+    	  MyTim->attachInterrupt(onTimer);
+    	  MyTim->resume();      
       #elif defined(ARDUINO_ARCH_MBED)
         NRF_TIMER4->TASKS_STOP = 1; // Stop timer
         NRF_TIMER4->MODE = TIMER_MODE_MODE_Timer;  // Set the timer in Counter Mode
@@ -144,6 +161,9 @@ void IBusBM::begin(HardwareSerial &serial, int8_t timerid, int8_t rxPin, int8_t 
         NVIC_EnableIRQ(TIMER4_IRQn);
 
         NRF_TIMER4->TASKS_START = 1;      // Start TIMER2
+      #elif defined(ARDUINO_ARCH_RP2040)
+        static repeating_timer_t Timer1ms;
+        add_repeating_timer_ms(1, onTimer, NULL, &Timer1ms);
       #else
         // It should not be too difficult to support additional architectures as most have timer functions, but I only tested AVR and ESP32
         #warning "Timing only supportted for AVR, ESP32 and STM32 architectures. Use timerid IBUSBM_NOTIMER"
